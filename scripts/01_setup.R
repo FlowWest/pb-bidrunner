@@ -2,10 +2,26 @@
 #   Ensures parameters specified in definitions.R are acceptable
 #   Evaluates structure and contents of axn_file for errors
 
+
+source("global.R")
+
+is_remote <- local({
+  x <- Sys.getenv("REMOTE")
+  
+  if (x == "AWS") {
+    TRUE
+  } else {
+    FALSE
+  }
+})
+
 # Load definitions -------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 def_dir <- getwd() #change if needed
+injection_source(file.path(def_dir, "definitions.R"), is_remote, list(
+  
+))
 source(file.path(def_dir, "definitions.R"))
 
 # Stop if any of the following parameters are undefined (should be loaded in definitions.R)
