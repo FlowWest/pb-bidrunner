@@ -2,7 +2,14 @@
 #   Ensures parameters specified in definitions.R are acceptable
 #   Evaluates structure and contents of axn_file for errors
 
-# Load definitions -------------------------------------------------------------
+# Logging package --------------------------------------------------------------
+# Check logging package first with non-logger error message if not found
+if (!require("logger")) {
+  stop(paste0("FATAL [", format(Sys.time(), "%Y-%m-%d %H:%m:%S"), "] - ", 
+              "The package 'logger' is required but not installed."))
+}
+
+# Definitions ------------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 def_dir <- getwd() #change if needed
@@ -14,11 +21,11 @@ parameters <- c("auction_id", "base_dir", "axn_dir", "axn_file", "required_cols"
                 "temp_dir", "repo_dir")
 missing_parameters <- parameters[!unlist(lapply(parameters, exists))]
 if (length(missing_parameters) > 0) {
-  stop("Check sourcing of definitions.R, as the following parameters have not been defined: ",
-       paste(missing_parameters, collapse = ", "))
+  stop(log_fatal("Check sourcing of definitions.R, as the following parameters have not been defined: ",
+                 paste(missing_parameters, collapse = ", ")))
 }
 
-# Load code files --------------------------------------------------------------
+# Code files -------------------------------------------------------------------
 fxn_dir <- file.path(repo_dir, "functions")
 code_files <- file.path(fxn_dir, c("00_shared_functions.R",
                                    "01_process_field_file.R",
@@ -42,7 +49,7 @@ tryCatch({ret <- lapply(code_files, source)},
 
 # Packages ---------------------------------------------------------------------
 # Check if all are installed
-required_packages <- c("parallelly", "future", "foreach", "doFuture", #paralell processing
+required_packages <- c("parallelly", "future", "foreach", "doFuture", #parallel processing
                        "terra", #spatial data manipulation
                        "progressr", "logger", #logging
                        "gbm", #predicting
@@ -50,13 +57,13 @@ required_packages <- c("parallelly", "future", "foreach", "doFuture", #paralell 
 installed_packages <- as.character(installed.packages()[,1])
 missing_packages <- required_packages[!(required_packages %in% installed_packages)]
 if (length(missing_packages) > 0) {
-  stop(add_ts("The following packages are required but not installed:\n\t",
-              paste0(missing_packages, collapse = "\n\t")))
+  log_error("The following packages are required but not installed:\n\t",
+              paste0(missing_packages, collapse = "\n\t"))
 }
 
 # Load those required for input testing / processing
-if (!require(parallelly)) stop(add_ts("Library parallelly is required"))     #for checking number of cores
-if (!require(terra)) stop(add_ts("Library terra is required"))               #for checking shapefile
+if (!require(parallelly)) log_error("Library parallelly is required")     #for checking number of cores
+if (!require(terra)) log_error("Library terra is required")               #for checking shapefile
 
 # Check passed parameters ------------------------------------------------------
 # Check shapefile existence (auction parameters checked at end of this script)

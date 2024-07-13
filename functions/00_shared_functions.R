@@ -10,6 +10,20 @@ add_ts <- function(...) paste0("{", Sys.getpid(), "} [", format(Sys.time(), "%Y-
 # Add as wrapper for base 'message' function
 message_ts <- function(...) message(add_ts(...))
 
+# Logging function using logger package that also throws a fatal error
+#   Calls both log_fatal() for logging and then stop() for throwing the condition
+log_stop <- function(..., cnd = NULL) {
+  
+  # If logger package installed
+  if (require(logger)) {
+    log_fatal(...)
+    stop(add_ts(...), call. = FALSE)
+  } else {
+    stop(add_ts(...))
+  }
+  
+}
+
 # Function to check directories exist, optionally loading
 check_dir <- function(directory, create = FALSE, verbose = FALSE) {
   
