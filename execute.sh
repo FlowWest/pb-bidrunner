@@ -40,16 +40,3 @@ send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R" "$bid_n
 Rscript --no-save scripts/02_analyze_bids.R $auction_id $auction_shapefile
 send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R... DONE" "$bid_name"
 
-# echo "complete."
-#
-# echo "running split-level anlysis..."
-# #time Rscript --no-save code/split_level_analysis.R auction_2022_spring Splt_ID Mar,Apr,May\
-# # p44r33_forecast_Feb_2022.tif,p44r33_forecast_Mar_2022.tif,p44r33_forecast_Apr_2022.tif,p44r33_forecast_May_2022.tif
-# touch data/hello.txt
-#
-# echo "copying output to bucket..."
-# gsutil -m cp -r data/auction_2022_spring/auction/ "gs://bid4birds-output"
-# echo "copying to GCS complete"
-#
-# echo "complete"
-#
