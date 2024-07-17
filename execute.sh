@@ -12,11 +12,7 @@ bid_name=$1
 input_bucket=$2
 auction_id=$3
 auction_shapefile=$4
-split_id=$5
-bid_id=$6
-bid_monts=$7
-waterfiles=$8
-output_bucket=$9
+output_bucket=$5
 
 send_sqs_message() {
     local queue_url="$1"
@@ -40,12 +36,9 @@ send_sqs_message() {
 
 send_sqs_message "$QUEUE_URL" "<execute.sh> - Starting up model run..." "$bid_name"
 
-EFS_CONTENTS=$(ls /mnt/efs 2>&1)
-MESSAGE="<execute.sh> - contents of /mnt/efs:\n$EFS_CONTENTS"
-send_sqs_message "$QUEUE_URL" "$MESSAGE" "$bid_name"
-
-send_sqs_message "$QUEUE_URL" "<execute.sh> - Running generate_split_message.R Script" "$bid_name"
-Rscript --no-save scripts/analyze_bids.R $bid_name $auction_id $auction_shapefile $split_id
+send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R" "$bid_name"
+Rscript --no-save scripts/02_analyze_bids.R $auction_id $auction_shapefile
+send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R... DONE" "$bid_name"
 
 # echo "complete."
 #

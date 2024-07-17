@@ -2,6 +2,7 @@
 #   Ensures parameters specified in definitions.R are acceptable
 #   Evaluates structure and contents of axn_file for errors
 
+args <- commandArgs(trailingOnly = TRUE)
 
 source("global.R")
 
@@ -15,20 +16,28 @@ is_remote <- local({
   }
 })
 
+if (length(args) == 0 && is_remote) {
+  stop(logger::log_error("bid running in REMOTE mode but no args passed in. Stopping."), call. = FALSE)  
+}
+
 # Load definitions -------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 def_dir <- getwd() #change if needed
 injection_source(file.path(def_dir, "definitions.R"), is_remote, list(
-  
+  "base_dir" = ".",
+  "auction_id" = args[1],
+  "shp_fn" = args[2],
+  "repo_dir" = args[3]
 ))
-source(file.path(def_dir, "definitions.R"))
 
 # Stop if any of the following parameters are undefined (should be loaded in definitions.R)
 parameters <- c("auction_id", "base_dir", "axn_dir", "axn_file", "required_cols", "axn_extent", 
                 "cores_max_global", "overwrite_global",
                 "temp_dir", "repo_dir")
+
 missing_parameters <- parameters[!unlist(lapply(parameters, exists))]
+
 if (length(missing_parameters) > 0) {
   stop("Check sourcing of definitions.R, as the following parameters have not been defined: ",
        paste(missing_parameters, collapse = ", "))
