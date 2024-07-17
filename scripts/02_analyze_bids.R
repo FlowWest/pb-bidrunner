@@ -23,7 +23,7 @@ if (length(args) == 0 && is_remote) {
 # Assumes definitions.R is located in the working directory
 def_dir <- if (is_remote) "." else getwd()
 
-injection_source(file.path(def_dir, "definitions.R"), is_remote, list(
+injection_source(file.path(def_dir, "definitions.R"), is_remote = is_remote, list(
   "base_dir" = ".",
   "auction_id" = args[1],
   "shp_fn" = args[2],
@@ -33,7 +33,9 @@ injection_source(file.path(def_dir, "definitions.R"), is_remote, list(
 
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed
-injection_source(file.path(setup_dir, "01_setup.R"), is_remote, list())
+
+# setup does not need remote args, therefore hardcoding it to false for now
+injection_source(file.path(setup_dir, "01_setup.R"), is_remote = FALSE, list())
 
 # Load packages (for multi-core processing and reporting)
 library(future)
