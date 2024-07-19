@@ -22,14 +22,7 @@ if (length(args) == 0 && is_remote) {
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 def_dir <- if (is_remote) "." else getwd()
-
-injection_source(file.path(def_dir, "definitions.R"), is_remote = is_remote, list(
-  "base_dir" = ".",
-  "auction_id" = args[1],
-  "shp_fn" = args[2],
-  "repo_dir" = args[3]
-))
-
+source(file.path(def_dir, "definitions.R"))
 
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed

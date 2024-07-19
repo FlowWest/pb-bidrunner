@@ -10,9 +10,8 @@ set -e
 # capture cl arguments
 bid_name=$1
 input_bucket=$2
-auction_id=$3
-auction_shapefile=$4
-output_bucket=$5
+auction_shapefile=$3
+output_bucket=$4
 
 send_sqs_message() {
     local queue_url="$1"
