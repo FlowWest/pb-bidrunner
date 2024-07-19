@@ -56,3 +56,15 @@ appender_sqs <- function(bid_name, sqs_url,
     generator = deparse(match.call())
   )
 }
+
+
+get_computing_backend <- function() {
+  x <- Sys.getenv("COMPUTE_BACKEND") 
+  if (x == "AWS") {
+    "aws"
+  } else {
+    "local"
+  }
+}
+
+

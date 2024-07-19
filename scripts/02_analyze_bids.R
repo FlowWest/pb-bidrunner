@@ -3,16 +3,11 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 source("global.R")
+def_dir <- if (is_remote) "." else getwd()
+source(file.path(def_dir, "definitions.R"))
 
-is_remote <- local({
-  x <- Sys.getenv("REMOTE")
-  
-  if (x == "AWS") {
-    TRUE
-  } else {
-    FALSE
-  }
-})
+# determine whether we are running locally or on aws
+compute_engine <- get_computing_backend()
 
 if (length(args) == 0 && is_remote) {
   stop(logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping."), call. = FALSE)  
@@ -21,8 +16,10 @@ if (length(args) == 0 && is_remote) {
 # Load definitions -------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
-def_dir <- if (is_remote) "." else getwd()
-source(file.path(def_dir, "definitions.R"))
+
+set_runner_definitions(
+  auction_id = args[1] || 
+)
 
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed
