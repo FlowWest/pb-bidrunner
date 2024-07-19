@@ -66,5 +66,3 @@ get_computing_backend <- function() {
     "local"
   }
 }
-
-

@@ -3,29 +3,35 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 source("global.R")
-def_dir <- if (is_remote) "." else getwd()
+compute_engine <- get_computing_backend()
+
+def_dir <- if (compute_engine == "aws") "." else getwd()
 source(file.path(def_dir, "definitions.R"))
 
 # determine whether we are running locally or on aws
-compute_engine <- get_computing_backend()
 
-if (length(args) == 0 && is_remote) {
-  stop(logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping."), call. = FALSE)  
+if (length(args) == 0 && compute_engine == "aws") {
+  logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")
+  stop(call. = FALSE)  
 }
 
 # Load definitions -------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 
+# update to reflect model run
 set_runner_definitions(
-  auction_id = args[1] || 
+  auction_id = args[1], # when run locally you provide the id here 
+  base_dir = paste0("/mnt/efs/", args[3]),
+  repo_dir = ".", # where the code is stored
+  shapefile_name = args[2]
 )
 
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed
 
 # setup does not need remote args, therefore hardcoding it to false for now
-injection_source(file.path(setup_dir, "01_setup.R"), is_remote = FALSE, list())
+source(file.path(setup_dir, "01_setup.R"))
 
 # Load packages (for multi-core processing and reporting)
 library(future)
