@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export REMOTE="AWS"
+export COMPUTE_BACKEND="AWS"
 
 QUEUE_URL="https://sqs.us-west-2.amazonaws.com/975050180415/water-tracker-Q"
 
