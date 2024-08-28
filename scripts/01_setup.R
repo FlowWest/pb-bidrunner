@@ -83,6 +83,7 @@ if (!require(terra)) log_error("Library terra is required")               #for c
 # Check passed parameters ------------------------------------------------------
 # Check shapefile existence (auction parameters checked at end of this script)
 if (!file.exists(axn_file)) {
+  print(paste0("Trying to read the auction file at: ", axn_file))
   stop(add_ts(paste0("auction shapefile axn_file specified in definitions.R not found. Missing file:\n\t",
                      axn_file)))
 }

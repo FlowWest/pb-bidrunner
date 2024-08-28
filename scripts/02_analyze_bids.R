@@ -6,8 +6,7 @@ source("global.R")
 compute_engine <- get_computing_backend()
 
 def_dir <- if (compute_engine == "aws") "." else getwd()
-print("the location of def_dir")
-print(list.files(def_dir))
+
 source(file.path(def_dir, "definitions.R"))
 
 # determine whether we are running locally or on aws
