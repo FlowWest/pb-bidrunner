@@ -20,6 +20,9 @@ if (length(args) == 0 && compute_engine == "aws") {
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 
+print(paste("the value of the input bucket is:", args[3]))
+
+
 # update to reflect model run
 set_runner_definitions(
   auction_id = args[1], # when run locally you provide the id here 
@@ -31,7 +34,7 @@ set_runner_definitions(
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed
 
-# setup does not need remote args, therefore hardcoding it to false for now
+# setup does not need remote args
 source(file.path(setup_dir, "01_setup.R"))
 
 # Load packages (for multi-core processing and reporting)
