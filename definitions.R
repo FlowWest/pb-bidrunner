@@ -75,7 +75,7 @@ set_runner_definitions <- function(
   
   # Directory containing the GitHub repository with the code and data
   # Defaults to assuming 'bid-runner-local' cloned to base_dir; adjust as needed
-  repo_dir <- repo_dir
+  repo_dir <- axn_dir
   
   
   vars <- 
