@@ -34,7 +34,7 @@ set_runner_definitions(
 # Load definitions, check parameters, source code, and run setup
 setup_dir <- file.path(def_dir, "scripts") #change if needed
 
-print(paste("the contents of axn_dir"), list.files(axn_dir))
+print(paste("the contents of axn_dir", list.files(axn_dir)))
 
 # setup does not need remote args
 source(file.path(setup_dir, "01_setup.R"))
