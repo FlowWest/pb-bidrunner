@@ -33,9 +33,8 @@ send_sqs_message() {
 
 
 
-send_sqs_message "$QUEUE_URL" "<execute.sh> - Starting up model run..." "$bid_name"
-
-send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R" "$bid_name"
+send_sqs_message "$QUEUE_URL" "<execute.sh> - Starting up bid run" "$bid_name"
+send_sqs_message "$QUEUE_URL" "<execute.sh> - Strating 02_analyze_bids.R" "$bid_name"
 Rscript --no-save scripts/02_analyze_bids.R $auction_id $auction_shapefile $input_bucket
 send_sqs_message "$QUEUE_URL" "<execute.sh> - Running 02_analyze_bids.R... DONE" "$bid_name"
 
