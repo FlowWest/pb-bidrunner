@@ -41,7 +41,7 @@ if (length(missing_parameters) > 0) {
 }
 
 # Code files -------------------------------------------------------------------
-fxn_dir <- file.path(repo_dir, "functions")
+fxn_dir <- file.path(".", "functions")
 code_files <- file.path(fxn_dir, c("00_shared_functions.R",
                                    "01_process_field_file.R",
                                    "02_impose_flooding.R",
