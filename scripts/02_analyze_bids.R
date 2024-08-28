@@ -25,10 +25,10 @@ print(paste("the value of the input bucket is:", args[3]))
 
 # update to reflect model run
 set_runner_definitions(
-  auction_id = args[1], # when run locally you provide the id here 
+  auction_id = gsub("/", "", args[1]), # when run locally you provide the id here 
   base_dir = paste0("/mnt/efs/"),
   repo_dir = ".", # where the code is stored
-  shapefile_name = args[2]
+  shapefile_name = gsub("/", "", args[2])
 )
 
 # Load definitions, check parameters, source code, and run setup
