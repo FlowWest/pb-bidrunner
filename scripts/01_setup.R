@@ -185,6 +185,7 @@ ref_file <- file.path(cov_dir, paste0("data_type_constant_ebird_", axn_extent, "
 # Landcovers
 landcovers <- c("Rice", "Corn", "Grain", "NonRiceCrops", "TreatedWetland", "Wetland_SemiSeas", "AltCrop")
 lc_files <- file.path(lc_dir, paste0(landcovers, "_valley.tif"))
+print(paste("the path to landcover files:", lc_dir))
 if (!all(file.exists(lc_files))) { stop(add_ts("Missing landcover files."))}
 
 # Bird definitions
