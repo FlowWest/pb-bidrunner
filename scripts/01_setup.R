@@ -2,31 +2,36 @@
 #   Ensures parameters specified in definitions.R are acceptable
 #   Evaluates structure and contents of axn_file for errors
 
-# Logging package --------------------------------------------------------------
-# Check logging package first with non-logger error message if not found
-if (!require("logger")) {
-  stop(paste0("FATAL [", format(Sys.time(), "%Y-%m-%d %H:%m:%S"), "] - ", 
-              "The package 'logger' is required but not installed."))
-}
-
-# Definitions ------------------------------------------------------------------
-# Load definitions.R to set auction and processing parameters
-# Assumes definitions.R is located in the working directory
+# Function to evaluate remote status -------------------------------------------
 is_remote <- local({
+  
   x <- Sys.getenv("REMOTE")
   
   if (x == "AWS") {
-    TRUE
+    return(TRUE)
   } else {
-    FALSE
+    return(FALSE)
   }
+  
 })
 
-# The file is already source when running the analyze bids
+# Definitions ------------------------------------------------------------------
+log_trace("Checking defined parameters")
+
+# Assumes definitions.R is already loaded in the working directory
+
+# Source definitions.R if running locally (01_setup.R before 02_analyze_bids.R)
+# The definitions file is already source when running the analyze bids
+# TODO: change so definitions is not sourced from two places in code
 if (!is_remote) {
   
   def_dir <- getwd() #change if needed
-  source(file.path(def_dir, "definitions.R"))
+  def_file <- file.path(def_dir, "definitions.R")
+  if (!file.exists(def_file)) stop(log_fatal("Could not find specified definitions file:\n* {def_file}")$default$message)
+  withCallingHandlers(source(def_file),
+    error = \(e) stop(log_fatal("Error sourcing definitions:\n*{e}")$default$message),
+    warning = \(w) log_warn("Warning sourcing definitions:\n* {w}")
+  )
   
 }
 
@@ -40,7 +45,32 @@ if (length(missing_parameters) > 0) {
                  paste(missing_parameters, collapse = ", ")))
 }
 
+# Check axn_dir exists and set logging file ------------------------------------
+log_trace("Setting log file")
+
+if (!file.exists(axn_dir)) {
+  stop(log_fatal("axn_dir {axn_dir} not found")$default$message)
+} 
+
+log_dir <- file.path(axn_dir, "logs")
+if (!file.exists(log_dir)) {
+  log_debug("Creating log directory {log_dir}")
+  dir.create(log_dir)
+}
+
+log_appender(appender_tee(log_dir, max_lines = 1000, max_files = 10))
+log_info("Processing has commenced. Logging output to file in log_dir {log_dir}")
+
 # Code files -------------------------------------------------------------------
+log_trace("Loading code files")
+
+# Check repo_dir
+if (!file.exists(repo_dir)) {
+  stop(log_fatal("Required code directory not found. Please check that you have cloned the GitHub repo to ",
+                 "the directory specified in definitions_local.R. Missing directory:\n* ",
+                 repo_dir)$default$message)
+}
+
 fxn_dir <- file.path(repo_dir, "functions")
 code_files <- file.path(fxn_dir, c("00_shared_functions.R",
                                    "01_process_field_file.R",
@@ -52,17 +82,18 @@ code_files <- file.path(fxn_dir, c("00_shared_functions.R",
                                    "07_summarize_predictions.R"))
 code_files_exist <- file.exists(code_files)
 if (!all(code_files_exist)) {
-  stop(paste0("{", Sys.getpid(), "} [", Sys.time(), "] - ",
-              "required code files not found. Please check that you have cloned the GitHub repo to ",
-              "the directory specified in definitions.R. Missing file(s):\n\t",
-              paste0(code_files[!code_files_exist], collapse = "\n\t")))
+  stop(log_fatal("Required code files not found. Please check that you have cloned the GitHub repo to ",
+                 "the directory specified in definitions.R. Missing file(s):\n* ",
+                 paste0(code_files[!code_files_exist], collapse = "\n* "))$default$message)
 }
-tryCatch({ret <- lapply(code_files, source)},
-         error = function(e) {
-           stop(paste0("{", Sys.getpid(), "} [", Sys.time(), "] - Error loading code files.\n\t", e))
-         })
+withCallingHandlers(lapply(code_files, source),
+         error = \(e) stop(log_fatal("Error loading code files:\n* {e}")$default$message),
+         warning = \(w) log_warn("Warning loading code files:\n* {w}"),
+         message = \(m) log_info(m))
 
 # Packages ---------------------------------------------------------------------
+log_trace("Checking packages")
+
 # Check if all are installed
 required_packages <- c("parallelly", "future", "foreach", "doFuture", #parallel processing
                        "terra", #spatial data manipulation
@@ -72,51 +103,46 @@ required_packages <- c("parallelly", "future", "foreach", "doFuture", #parallel 
 installed_packages <- as.character(installed.packages()[,1])
 missing_packages <- required_packages[!(required_packages %in% installed_packages)]
 if (length(missing_packages) > 0) {
-  log_error("The following packages are required but not installed:\n\t",
-              paste0(missing_packages, collapse = "\n\t"))
+  stop(log_fatal("The following packages are required but not installed:\n* ",
+                 paste0(missing_packages, collapse = "\n* "))$default$message)
 }
 
 # Load those required for input testing / processing
-if (!require(parallelly)) log_error("Library parallelly is required")     #for checking number of cores
-if (!require(terra)) log_error("Library terra is required")               #for checking shapefile
+if (!require(parallelly)) stop(log_fatal("Library parallelly is required")$default$message)     #for checking number of cores
+if (!require(terra)) stop(log_fatal("Library terra is required")$default$message)               #for checking shapefile
 
 # Check passed parameters ------------------------------------------------------
+log_trace("Checking passed parameters")
+
 # Check shapefile existence (auction parameters checked at end of this script)
 if (!file.exists(axn_file)) {
-  stop(add_ts(paste0("auction shapefile axn_file specified in definitions.R not found. Missing file:\n\t",
-                     axn_file)))
+  stop(log_fatal("Auction shapefile axn_file specified in definitions.R not found. ",
+                 "Missing file:\n* {axn_file}")$default$message)
 }
 
 # Check processing_extent
 allowed_scenes <- c("p44r33", "p44r34", "p43r34", "p42r35", "valley")
-if (!length(axn_extent) == 1) stop("axn_extent must be a single entry")
+if (!length(axn_extent) == 1) stop(log_fatal("axn_extent must be a single entry")$default$message)
 if (!(axn_extent %in% allowed_scenes)) {
-  stop(add_ts(paste0("invalid processing extent specified in definitions_local.R. ", 
-                     "Defined axn_extent must be one of the following values:\n\t",
-                     paste0(allowed_scenes, collapse = "\n\t"))))
-}
-
-# Check repo_dir
-if (!file.exists(repo_dir)) {
-  stop(add_ts(paste0("required code directory not found. Please check that you have cloned the GitHub repo to ",
-                     "the directory specified in definitions_local.R. Missing directory:\n\t",
-                     repo_dir)))
+  stop(log_fatal("Invalid processing extent specified in definitions_local.R. ", 
+                 "Defined axn_extent must be one of the following values:\n* ",
+                 paste0(allowed_scenes, collapse = "\n* "))$default$message)
 }
 
 # Check overwrite_global
-if (!is.logical(overwrite_global)) stop("overwrite_global parameter must be either TRUE or FALSE.")
+if (!is.logical(overwrite_global)) stop(log_fatal("overwrite_global parameter must be either TRUE or FALSE.")$default$message)
 
 # Check cores_max_global
-if (!is.numeric(cores_max_global)) stop("cores_max_global parameter must be an integer.")
+if (!is.numeric(cores_max_global)) stop(log_fatal("cores_max_global parameter must be an integer.")$default$message)
 cores_available <-  availableCores() - 1 #keep one core free for this
 if (cores_max_global > cores_available)  {
-  warning(add_ts(paste0("Specified cores_max_global for multi-core processing of ", cores_max_global, 
-                        " is higher than available cores. Setting to ", cores_available, ".")))
+  log_warn("Specified cores_max_global for multi-core processing of ", cores_max_global, 
+           " is higher than available cores. Setting to ", cores_available, ".")
   cores_max_global <- cores_available
 }
 
 # Set directories --------------------------------------------------------------
-data_dir <- file.path(repo_dir, "data") # This should change to be a stable location outside the repo
+log_trace("Setting directories")
 
 lc_dir <- file.path(data_dir, "landcover")
 run_dir <- file.path(data_dir, "runoff")
@@ -153,10 +179,8 @@ imp_fcl_dir <- file.path(scn_imp_dir, "water_focal")
 imp_prd_dir <- file.path(scn_imp_dir, "bird_predictions")
 imp_stat_dir <- file.path(scn_imp_dir, "stats")
 
-# Logs
-log_dir <- file.path(axn_dir, "logs")
-
 # Create missing directories ---------------------------------------------------
+log_trace("Checking and creating directories")
 dirs <- c(data_dir, 
           axn_dir, 
           fld_dir,
@@ -172,19 +196,20 @@ dirs <- c(data_dir,
           imp_wxl_dir, 
           imp_fcl_dir, 
           imp_prd_dir, 
-          imp_stat_dir,
-          log_dir)
+          imp_stat_dir)
 
 check_dir(dirs, create = TRUE)
 
 # Model definitions and data files ---------------------------------------------
+log_trace("Setting model and data file definitions")
+
 # Reference file
 ref_file <- file.path(cov_dir, paste0("data_type_constant_ebird_", axn_extent, ".tif"))
 
 # Landcovers
 landcovers <- c("Rice", "Corn", "Grain", "NonRiceCrops", "TreatedWetland", "Wetland_SemiSeas", "AltCrop")
 lc_files <- file.path(lc_dir, paste0(landcovers, "_valley.tif"))
-if (!all(file.exists(lc_files))) { stop(add_ts("Missing landcover files."))}
+if (!all(file.exists(lc_files))) stop(log_fatal("Missing landcover files")$default$message)
 
 # Bird definitions
 bird_df <- data.frame("CommonName" = c("American Avocet", "Black-necked Stilt", "Dowitcher", "Dunlin", 
@@ -233,22 +258,27 @@ data_files <- c(ref_file, lc_files,
                 lt_wtr_files, lt_fcl_files)
 data_files_exist <- file.exists(data_files)
 if (!all(data_files_exist)) {
-  stop(add_ts("Required data files not found. If you cloned the repo from GitHub, please check ",
-              "that you have Git Large File Storage installed and that you have cloned the GitHub repo to ",
-              "the directory specified in definitions.R. Missing file(s):\n\t",
-              paste0(data_files[!data_files_exist], collapse = "\n\t")))
+  stop(log_fatal("Required data files not found. If you cloned the repo from GitHub, please check ",
+                 "that you have Git Large File Storage installed and that you have cloned the GitHub repo to ",
+                 "the directory specified in definitions.R. Missing file(s):\n* ",
+                 paste0(data_files[!data_files_exist], collapse = "\n* "))$default$message)
 }
 
 # Check auction file -----------------------------------------------------------
+log_trace("Checking auction file")
 axn_file_clean <- file.path(fld_dir, gsub(".shp", "_clean.shp", shp_fn))
 
 # Clean shapefile
 if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   
-  message_ts("Checking and cleaning field shapefile...")
+  log_info("Checking and cleaning field shapefile...")
   
   # Load
-  axn_shp <- vect(axn_file)
+  withCallingHandlers(axn_shp <- vect(axn_file),
+           error = \(e) stop(log_error("Error loading axn_file {axn_file}:\n* {e}")$default$message),
+           warning = \(w) log_warn("Warning loading axn_file:\n* {w}"),
+           message = \(m) log_info(m)
+  )
   
   # Add any ad-hoc edits to shapefile here
   # TODO: figure out better place and/or way to do this
@@ -257,7 +287,7 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   # Check for invalid geometries
   shp_invalid <- !is.valid(axn_shp)
   if (any(shp_invalid)) {
-    message_ts("WARNING - Found ", sum(shp_invalid), " polygons with invalid geometries. Attempting to fix...")
+    log_warn("Found ", sum(shp_invalid), " polygons with invalid geometries. Attempting to fix...")
     axn_shp <- makeValid(axnShp)
   }
   
@@ -265,14 +295,14 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   # required_cols set in definitions.R
   missing_cols <- required_cols[!(required_cols %in% names(axn_shp))]
   if (length(missing_cols) > 0) {
-    stop(add_ts(paste0("The following required column(s) are missing from the auction shapefile:\n\t",
-                       paste0(missing_cols, collapse = "\n\t"))))
+    stop(log_fatal("The following required column(s) are missing from the auction shapefile:\n* ",
+                   paste0(missing_cols, collapse = "\n* "))$default$message)
   }
   
   # Drop bids specified as bids_to_remove in definitions.R
   if (length(bids_to_remove) > 1) {
-    message_ts("WARNING - Attempting to remove the following bids (specified as bids_to_remove in definitions.R):\n\t",
-               paste0(bids_to_remove, collapse = "\n\t"))
+    log_warn("Attempting to remove the following bids (specified as bids_to_remove in definitions.R):\n* ",
+             paste0(bids_to_remove, collapse = "\n* "))
     
     # Loop across bids to remove
     for (b in bids_to_remove) {
@@ -280,11 +310,12 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
       matches <- grepl(b, axn_shp$BidID)
       if (sum(matches) == 0) {
         
-        stop(add_ts("Found no matches for bid ", b, ". Please check specification of bids_to_remove in definitions.R"))
-      
+        stop(log_fatal("Found no matches for bid ", b, ". ",
+                       "Please check specification of bids_to_remove in definitions.R")$default$message)
+        
       } else {
         
-        message_ts("Found and removing ", sum(matches), " bid fields for bid ", b, ":")
+        log_info("Found and removing ", sum(matches), " bid fields for bid ", b, ":")
         print(as.data.frame(axn_shp[matches,]))
         axn_shp <- axn_shp[!matches,]
         
@@ -300,15 +331,15 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   #   be no error so long as the first element is in proper format
   tryCatch({
     
-      start_dates <- lapply(axn_shp$StartDate, as.Date)
-      end_dates <- lapply(axn_shp$EndDate, as.Date)
-      
-    }, error = function(e) {
-      
-      stop(add_ts("Unable to parse date values. Please ensure they are in a standard, ",
-                  "unambiguous format.\n\t", e))
-      
-    })
+    start_dates <- lapply(axn_shp$StartDate, as.Date)
+    end_dates <- lapply(axn_shp$EndDate, as.Date)
+    
+  }, error = function(e) {
+    
+    stop(log_fatal("Unable to parse date values. Please ensure they are in a standard, ",
+                   "unambiguous format.\n* {e}")$default$message)
+    
+  })
   
   
   # Check end dates are after start dates
@@ -320,83 +351,83 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
     
     bad_date_df <- unique(as.data.frame(axn_shp[day_diff <= 0, c("BidID", "StartDate", "EndDate")]))
     print(bad_date_df)
-    stop(add_ts("EndDate must be after StartDate. Fix dates for the following bids:\n\t",
-                paste0(bad_date_df$BidID, collapse = "\n\t")))
-
+    stop(log_fatal("EndDate must be after StartDate. Fix dates for the following bids:\n* ",
+                   paste0(bad_date_df$BidID, collapse = "\n* "))$default$message)
+    
   }
   
   # Get months from shapefile
   mth_nums <- sort(as.numeric(unique(format(as.Date(c(start_dates, end_dates)), format = "%m"))))
   axn_mths <- month.abb[mth_nums]
-    
+  
   # Check for multiple start/end dates in one bid
   bid_start_df <- unique(as.data.frame(axn_shp)[c("BidID", "StartDate")])
   bids_multi_start <- unique(bid_start_df$BidID[duplicated(bid_start_df$BidID)])
   if (length(bids_multi_start) > 0) {
-    message_ts("WARNING - the following bids have multiple start dates:\n\t",
-               paste0(bids_multi_start, collapse = "\n\t"))
-    message_ts("WARNING - Bids will be split and analyzed separately by start date. ", 
-               "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
-               "To fix, either change StartDates to match within bids or create a ", 
-               "new BidID for each StartDate (e.g., by appending a letter).")
+    log_warn("The following bids have multiple start dates:\n* ",
+             paste0(bids_multi_start, collapse = "\n* "))
+    log_warn("Bids will be split and analyzed separately by start date. ", 
+             "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
+             "To fix, either change StartDates to match within bids or create a ", 
+             "new BidID for each StartDate (e.g., by appending a letter).")
   }
   
   bid_end_df <- unique(as.data.frame(axn_shp)[c("BidID", "EndDate")])
   bids_multi_end <- unique(bid_end_df$BidID[duplicated(bid_end_df$BidID)])
   if (length(bids_multi_end) > 0) {
-    message_ts("WARNING - the following bids have multiple end dates:\n\t",
-               paste0(bids_multi_end, collapse = "\n\t"))
-    message_ts("WARNING - Bids will be split and analyzed separately by end date. ", 
-               "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
-               "To fix, either change EndDates to match within bids or create a ", 
-               "new BidID for each EndDate (e.g., by appending a letter).")
+    log_warn("The following bids have multiple end dates:\n* ",
+             paste0(bids_multi_end, collapse = "\n* "))
+    log_warn("Bids will be split and analyzed separately by end date. ", 
+             "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
+             "To fix, either change EndDates to match within bids or create a ", 
+             "new BidID for each EndDate (e.g., by appending a letter).")
   }
   
   # Check to see if any bids are splittable
   nas_fld_split <- is.na(axn_shp$Split)
   if (any(nas_fld_split)) {
-    message_ts("WARNING - the following bids have at least one row with an NA value in the ", 
-               "column 'Split' and each will be grouped (check if desired):\n\t",
-               paste0(unique(axn_shp$BidID[nas_fld_split]), collapse = "\n\t"))
+    log_warn("The following bids have at least one row with an NA value in the ", 
+             "column 'Split' and each will be grouped (check if desired):\n* ",
+             paste0(unique(axn_shp$BidID[nas_fld_split]), collapse = "\n* "))
   }
   
   split_bool <- axn_shp$Split == TRUE | 
-                 axn_shp$Split == 1 |
-                 axn_shp$Split == "1" |
-                 axn_shp$Split == "Y" |
-                 axn_shp$Split == "Yes"
+    axn_shp$Split == 1 |
+    axn_shp$Split == "1" |
+    axn_shp$Split == "Y" |
+    axn_shp$Split == "Yes"
   axn_shp$Split <- split_bool
   
   if (sum(split_bool) == 0) {
-    message_ts("WARNING - no bids are coded as splitable, please check that this is correct.")
+    log_warn("No bids are coded as splitable, please check that this is correct.")
   }
   
   # Check for multiple split y/n parameters in one bid
   bid_split_df <- unique(as.data.frame(axn_shp)[c("BidID", "Split")])
   bids_multi_split <- unique(bid_split_df$BidID[duplicated(bid_split_df$BidID)])
   if (length(bids_multi_split) > 0) {
-    message_ts("WARNING - the following bids have fields coded with Split both TRUE and FALSE:\n\t",
-               paste0(bids_multi_split, collapse = "\n\t"))
-    message_ts("WARNING - Fields with split == FALSE will be grouped (within a bid) and ", 
-               "fields with split == TRUE will be analyzed separately. ", 
-               "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
-               "To fix, either change Split parameter to match within bids or create a ", 
-               "new BidID for splitabble vs non-splittable fields within a bid.")
+    log_warn("The following bids have fields coded with Split both TRUE and FALSE:\n* ",
+             paste0(bids_multi_split, collapse = "\n* "))
+    log_warn("Fields with split == FALSE will be grouped (within a bid) and ", 
+             "fields with split == TRUE will be analyzed separately. ", 
+             "This behavior is not tested, so results may be incorrect or difficult to interpret. ",
+             "To fix, either change Split parameter to match within bids or create a ", 
+             "new BidID for splitabble vs non-splittable fields within a bid.")
   }
   
   # Clean names
   if (any(grepl("[^a-zA-Z0-9_\\-]", axn_shp$BidID))) {
-    message_ts("Removing invalid characters from BidID")
+    log_info("Removing invalid characters from BidID")
     axn_shp$BidID <- clean_string(axn_shp$BidID, "")
   }
   if (any(grepl("[^a-zA-Z0-9_\\-]", axn_shp$FieldID))) {
-    message_ts("Removing invalid characters from FieldID")
+    log_info("Removing invalid characters from FieldID")
     axn_shp$FieldID <- clean_string(axn_shp$FieldID)
   }
   
   # Fill blanks
   if (any(is.na(axn_shp$FieldID))) {
-    message_ts("Filling blank field names with 'Field'")
+    log_info("Filling blank field names with 'Field'")
     axn_shp$FieldID <- ifelse(is.na(axn_shp$FieldID) | axn_shp$FieldID == "", "Field", axn_shp$FieldID)  
   }
   
@@ -405,8 +436,8 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   dup_df <- unique(bid_field_df[duplicated(bid_field_df),])
   if (nrow(dup_df) > 0) {
     
-    message_ts("WARNING - ", nrow(dup_df), " duplicate bid-field combinations found. ",
-               "Will make unique by appending a number to 'FieldID' in ascending order.")
+    log_warn("Found ", nrow(dup_df), " duplicate bid-field combinations. ",
+             "Will make unique by appending a number to 'FieldID' in ascending order.")
     
     # Make duplicates unique by appending an ascending number (-1, -2, etc)
     for (n in 1:nrow(dup_df)) {
@@ -427,9 +458,9 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   ref_rst <- rast(ref_file)
   if (!identical(crs(axn_shp, proj = TRUE), crs(ref_rst, proj = TRUE))) {
     
-    message_ts("Field shapefile in wrong projection. Attempting to reproject to match...")
+    log_warn("Field shapefile in wrong projection. Attempting to reproject to match...")
     axn_shp_prj <- project(axn_shp, crs(ref_rst))
-    message_ts("Reprojection complete.")
+    log_info("Reprojection complete.")
     
   } else {
     
@@ -439,7 +470,7 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   
   # Export
   writeVector(axn_shp_prj, filename = axn_file_clean, filetype = "ESRI Shapefile", overwrite = TRUE)
-  message_ts("Cleaned shapefile exported.")
+  log_info("Cleaned shapefile exported.")
   
   # Flood areas
   flood_areas <- axn_shp$BidFieldID
@@ -450,7 +481,7 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
 } else {
   
   axn_shp <- vect(axn_file_clean)
-  message_ts("Shapefile already cleaned and overwrite != TRUE; cleaned shapefile loaded.")
+  log_info("Shapefile already cleaned and overwrite != TRUE; cleaned shapefile loaded.")
   flood_areas <- axn_shp$BidFieldID
   
   # Get months from shapefile
@@ -461,6 +492,8 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
 }
 
 # Final parameters -------------------------------------------------------------
+log_trace("Setting final parameters")
+
 # Subset monthly covars to auction months
 lt_wtr_files <- lt_wtr_files[grepl(paste0(".*_((", paste0(axn_mths, collapse = ")|("), ")).tif$"), lt_wtr_files)]
 lt_fcl_files <- lt_fcl_files[grepl(paste0(".*_((", paste0(axn_mths, collapse = ")|("), "))_.*tif$"), lt_fcl_files)]
