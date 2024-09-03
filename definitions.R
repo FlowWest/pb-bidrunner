@@ -17,7 +17,7 @@ set_runner_definitions <- function(
     auction_id, 
     base_dir, 
     repo_dir,
-    #data_dir = "default/path" # add option to specify data_dir in call?
+    data_dir,                          # add option to specify data_dir in call?
     shapefile_name, 
     extra_cols = c(), 
     bids_to_remove = c(), 
@@ -81,12 +81,13 @@ set_runner_definitions <- function(
   
   # Directory containing the required data
   # This should change to be a stable location outside the repo and/or specified via command line
-  data_dir <- file.path(repo_dir, "data") # TODO
+  data_dir <- data_dir # TODO
   
   vars <- 
     list(
       auction_id = auction_id, 
       base_dir = base_dir, 
+      data_dir = data_dir, 
       axn_dir = axn_dir, 
       shp_fn = shp_fn, 
       axn_file = axn_file, 
