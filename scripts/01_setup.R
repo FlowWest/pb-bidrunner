@@ -30,7 +30,7 @@ if (!is_remote) {
   if (!file.exists(def_file)) stop(log_fatal("Could not find specified definitions file:\n* {def_file}")$default$message)
   withCallingHandlers(source(def_file),
     error = \(e) stop(log_fatal("Error sourcing definitions:\n*{e}")$default$message),
-    warning = \(w) log_warn("Warning sourcing definitions:\n* {w}")
+    warning = \(w) log_warn("Warning sourcing definitions:\n*", paste(w))
   )
   
 }
@@ -58,7 +58,7 @@ if (!file.exists(log_dir)) {
   dir.create(log_dir)
 }
 
-log_appender(appender_tee(log_dir, max_lines = 1000, max_files = 10))
+log_appender(appender_tee(file.path(log_dir, "logger-log"), max_lines = 1000, max_files = 10L))
 log_info("Processing has commenced. Logging output to file in log_dir {log_dir}")
 
 # Code files -------------------------------------------------------------------
@@ -87,9 +87,9 @@ if (!all(code_files_exist)) {
                  paste0(code_files[!code_files_exist], collapse = "\n* "))$default$message)
 }
 withCallingHandlers(lapply(code_files, source),
-         error = \(e) stop(log_fatal("Error loading code files:\n* {e}")$default$message),
-         warning = \(w) log_warn("Warning loading code files:\n* {w}"),
-         message = \(m) log_info(m))
+         error = \(e) stop(log_fatal("Error loading code files:\n*", paste(e))$default$message),
+         warning = \(w) log_warn("Warning loading code files:\n*", paste(w)),
+         message = \(m) log_info(m$message))
 
 # Packages ---------------------------------------------------------------------
 log_trace("Checking packages")
@@ -275,9 +275,9 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   
   # Load
   withCallingHandlers(axn_shp <- vect(axn_file),
-           error = \(e) stop(log_error("Error loading axn_file {axn_file}:\n* {e}")$default$message),
-           warning = \(w) log_warn("Warning loading axn_file:\n* {w}"),
-           message = \(m) log_info(m)
+           error = \(e) stop(log_error("Error loading axn_file {axn_file}:\n*", paste(e))$default$message),
+           warning = \(w) log_warn("Warning loading axn_file:\n*", paste(w)),
+           message = \(m) log_info(m$message)
   )
   
   # Add any ad-hoc edits to shapefile here
@@ -337,7 +337,7 @@ if (!file.exists(axn_file_clean) | overwrite_global == TRUE) {
   }, error = function(e) {
     
     stop(log_fatal("Unable to parse date values. Please ensure they are in a standard, ",
-                   "unambiguous format.\n* {e}")$default$message)
+                   "unambiguous format.\n*", paste(e))$default$message)
     
   })
   
