@@ -12,14 +12,14 @@ if (!require("logger")) {
 
 # Get arguments from command line
 withCallingHandlers(args <- commandArgs(trailingOnly = TRUE),
-         error = \(e) stop(log_fatal("Error getting command line args:\n* {e}")$default$message),
-         warning = \(w) log_warn("Warning getting command line args:\n* {w}"),
-         message = \(m) log_info(m))
+         error = \(e) stop(log_fatal("Error getting command line args:\n*", paste(e))$default$message),
+         warning = \(w) log_warn("Warning getting command line args:\n*", paste(w)),
+         message = \(m) log_info(m$message))
 
 withCallingHandlers(source("global.R"),
-         error = \(e) stop(log_fatal("Error sourcing global.R:\n* {e}")$default$message),
-         warning = \(w) log_warn("Warning sourcing global.R:\n* {w}"),
-         message = \(m) log_info(m))
+         error = \(e) stop(log_fatal("Error sourcing global.R:\n*", paste(e))$default$message),
+         warning = \(w) log_warn("Warning sourcing global.R:\n*", paste(w)),
+         message = \(m) log_info(m$message))
 compute_engine <- get_computing_backend()
 
 # Load definitions -------------------------------------------------------------
@@ -28,27 +28,27 @@ compute_engine <- get_computing_backend()
 log_trace("Loading definitions and checking parameters")
 def_dir <- if (compute_engine == "aws") "." else getwd()
 withCallingHandlers(source(file.path(def_dir, "definitions.R")),
-         error = \(e) stop(log_fatal("Error sourcing definitions.R:\n* {e}")$default$message),
-         warning = \(w) log_warn("Warning sourcing definitions.R:\n* {w}"),
-         message = \(m) log_info(m))
+         error = \(e) stop(log_fatal("Error sourcing definitions.R:\n*", paste(e))$default$message),
+         warning = \(w) log_warn("Warning sourcing definitions.R:\n*", paste(w)),
+         message = \(m) log_info(m$message))
 
 # determine whether we are running locally or on aws
 if (length(args) == 0 && compute_engine == "aws") {
-  logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")
-  stop(call. = FALSE)  
+  stop(log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")$default$message)
 }
 
 # update to reflect model run
 withCallingHandlers({
   set_runner_definitions(
-    auction_id = args[1], # when run locally you provide the id here 
-    base_dir = paste0("/mnt/efs/", args[3]),
+    auction_id = args[1], # when run locally you provide the id here (e.g., "2024-02-B4B")
+    base_dir = paste0("/mnt/efs/", args[3]), #local example: "E:/data/auctions"
     repo_dir = ".", # where the code is stored
-    shapefile_name = args[2]
+    data_dir = "path/to/data", #"E:/data/auctions/auction_data",
+    shapefile_name = "B4B_spring_24_fields_all.shp", #args[2]
   )},
-  error = \(e) stop(log_fatal("Error setting definitions for run:\n* {e}")$default$message),
-  warning = \(w) log_warn("Warning setting definitions for run:\n* {w}"),
-  message = \(m) log_info(m)
+  error = \(e) stop(log_fatal("Error setting definitions for run:\n*", paste(e))$default$message),
+  warning = \(w) log_warn("Warning setting definitions for run:\n*", paste(w)),
+  message = \(m) log_info(m$message)
   )
 
 # Load definitions, check parameters, source code, and run setup
@@ -56,9 +56,9 @@ setup_dir <- file.path(def_dir, "scripts") #change if needed
 
 # setup does not need remote args, therefore hardcoding it to false for now
 withCallingHandlers(source(file.path(setup_dir, "01_setup.R")),
-         error = \(e) stop(log_fatal("Error running setup.R:\n* {e}")$default$message),
-         warning = \(w) log_warn("Warning running setup.R:\n* {w}"),
-         message = \(m) log_info(m))
+         error = \(e) stop(log_fatal("Error running setup.R:\n*", paste(e))$default$message),
+         warning = \(w) log_warn("Warning running setup.R:\n*", paste(w)),
+         message = \(m) log_info(m$message))
 
 # Load packages (for multi-core processing and reporting)
 library(future)
@@ -75,9 +75,9 @@ withCallingHandlers({
                                          output_dir = spl_dir,              #defined in definitions.R
                                          do_rasterize = FALSE,
                                          overwrite = overwrite_global)},
-  error = \(e) stop(log_fatal("Error splitting shapefile:\n* {e}")$default$message),
-  warning = \(w) log_warn("Warning splitting shapefile:\n* {w}"),
-  message = \(m) log_info(m))
+  error = \(e) stop(log_fatal("Error splitting shapefile:\n*", paste(e))$default$message),
+  warning = \(w) log_warn("Warning splitting shapefile:\n*", paste(w)),
+  message = \(m) log_info(m$message))
 
 # Function that runs the auction, using progress handlers and multiple cores as 
 # set by 'plan' in the future package
@@ -85,8 +85,14 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
                              retry_times = 0, retry_counter = NULL,
                              verbose_level = 1, p = NULL, global_prog_mult = 1) {
   
+  log_info("Starting auction evaluation")
+  
   # Check/set retry counter
-  if (retry_times > 1) stop(add_ts("Only supports one level of retry upon error."))
+  if (retry_times > 1) {
+    log_warn("evaluation_auction() only supports a maximum of one level of retry upon error; ",
+             "setting retry_times to 1.")
+    retry_times <- 1
+  }
   if (is.null(retry_counter)) { 
     retry_counter <- 0
   } else {
@@ -94,6 +100,8 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
   }
   
   # Count files for progress reporter
+  log_debug("Estimating processing time")
+  
   n_fas <- length(unlist(flood_areas))
   n_mths <- length(axn_mths)
   n_lcs <- length(lc_files)
@@ -107,6 +115,8 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
   n_att <- n_fas
   
   # Start progress reporter
+  log_debug("Starting progress reporter")
+  
   if (is.null(p)) {
     p <- progressor(steps = n_rst + n_imp + n_wxl + n_fcl + n_prd + n_att, 
                     auto_finish = FALSE)
@@ -125,6 +135,8 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
   } 
   
   foreach(fa = flood_areas) %dofuture% {
+    
+    log_debug("Splitting by core")
     
     # Set terra memory options
     terraOptions(memfrac = 0.1, memmax = 8)#, steps = 55)
@@ -268,7 +280,7 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
       }
       
       p(add_ts("ERROR - ", fxn, " - ", lbl, e), class = "sticky", amount = 0)
-      log_error("Error in {fxn}, lbl:\n* {e}")
+      #log_error("Error in ", fxn, ", ", lbl, ":\n* ")#, paste(e$message)) #not caught by logger package
       
       saveRDS(e, file.path(log_dir, paste0("error_function-", fxn, "_FA-", paste0(unlist(fa), collapse = "-"),
                                            "_retry-", retry_counter, "-of-", retry_times,
@@ -292,7 +304,7 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
     
     # On warning
     warning = function(w) {
-      log_warn("Warning in {fxn}:\n* {w}")
+      #log_warn("Warning in ", fxn, ":\n* ", paste(w)) #not caught by logger package
       p(gsub("\\s", " ", w), class = "sticky", amount = 0)
     }, 
     
@@ -300,7 +312,7 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
     message = function(m) {
       if (fxn_msg) {
         msg <- m$message
-        log_info(msg)
+        #log_info(msg) #not caught by logger package
         if (verbose_level > 2) {
           p(gsub("\\s", " ", msg), class = "sticky", amount = 0)
         } else if (grepl("(Output file)|(Complete.)", msg)) {
@@ -331,7 +343,7 @@ handlers(handler_progress(
 
 # Set number of cores to use if running 
 # flood_areas pulled from axn_shp in 01_setup.R
-cores_to_use <- 4
+cores_to_use <- 2
 n_sessions <- min(length(flood_areas), cores_to_use, cores_max_global, availableCores() - 1)
 
 # Setup multisession evaluation
@@ -340,10 +352,15 @@ plan(multisession, workers = n_sessions)
 
 # Run
 log_info("Starting auction evaluation")
-evaluation <- evaluate_auction(flood_areas, 
-                               verbose_level = 1, 
-                               retry_times = 1, 
-                               overwrite = overwrite_global)
+withCallingHandlers({
+  evaluation <- evaluate_auction(flood_areas, 
+                                 verbose_level = 1, 
+                                 retry_times = 2, 
+                                 overwrite = overwrite_global)
+  },
+  error = \(e) stop(log_fatal("Error running evaluate_auction():\n* ", paste(e))$default$message),
+  warning = \(w) log_warn("Warning running evaluate_auction():\n* ", paste(w)),
+  message = \(m) log_info(m$message))
 
 # Summarize
 stat_files <- list.files(imp_stat_dir, pattern = ".rds$", full.names = TRUE)
@@ -353,7 +370,7 @@ withCallingHandlers({
                                      output_dir = imp_stat_dir, 
                                      overwrite = TRUE)
   },
-  error = \(e) stop(log_fatal("Error running setup.R:\n* {e}")$default$message),
-  warning = \(w) log_warn("Warning running setup.R:\n* {w}"),
-  message = \(m) log_info(m))
+  error = \(e) stop(log_fatal("Error running summarize_predictions():\n* ", paste(e))$default$message),
+  warning = \(w) log_warn("Warning running summarize_precitions():\n* ", paste(w)),
+  message = \(m) log_info(m$message))
 
