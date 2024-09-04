@@ -27,7 +27,7 @@ print(list.files("/mnt/efs/"))
 set_runner_definitions(
   auction_id = gsub("/", "", args[1]), # when run locally you provide the id here 
   base_dir = paste0("/mnt/efs"),
-  data_dir = paste0("/mnt/efs/bidunner-data"),
+  data_dir = paste0("/mnt/efs"),
   repo_dir = ".", # where the code is stored
   shapefile_name = gsub("/", "", args[2])
 )
