@@ -21,7 +21,7 @@ if (length(args) == 0 && compute_engine == "aws") {
 # Assumes definitions.R is located in the working directory
 
 print("the files in the /mnt/efs/bidunner-data")
-print(list.files("/mnt/efs/bidunner-data"))
+print(list.files("/mnt/efs/"))
 
 # update to reflect model run
 set_runner_definitions(
