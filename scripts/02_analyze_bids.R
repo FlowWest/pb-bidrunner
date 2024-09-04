@@ -20,8 +20,8 @@ if (length(args) == 0 && compute_engine == "aws") {
 # Load definitions.R to set auction and processing parameters
 # Assumes definitions.R is located in the working directory
 
-print(paste("the value of the input bucket is:", args[3]))
-
+print("the files in the /mnt/efs/bidunner-data")
+print(list.files("/mnt/efs/bidunner-data"))
 
 # update to reflect model run
 set_runner_definitions(
