@@ -29,7 +29,8 @@ set_runner_definitions(
   base_dir = paste0("/mnt/efs"),
   data_dir = paste0("/mnt/efs"),
   repo_dir = ".", # where the code is stored
-  shapefile_name = gsub("/", "", args[2])
+  shapefile_name = gsub("/", "", args[2]), 
+  cores_max_global = 8
 )
 
 # Load definitions, check parameters, source code, and run setup
