@@ -117,7 +117,6 @@ if (cores_max_global > cores_available)  {
 }
 
 # Set directories --------------------------------------------------------------
-data_dir <- file.path(repo_dir) # This should change to be a stable location outside the repo
 
 lc_dir <- file.path(data_dir, "landcover")
 run_dir <- file.path(data_dir, "runoff")

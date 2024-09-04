@@ -18,6 +18,7 @@ set_runner_definitions <- function(
     base_dir, 
     repo_dir,
     shapefile_name, 
+    data_dir,
     extra_cols = c(), 
     bids_to_remove = c(), 
     axn_extent = "valley", 
@@ -32,7 +33,7 @@ set_runner_definitions <- function(
   # By default, place in same directory as this repo (one level up from getwd())
   # base_dir isn't used for anything except setting axn_dir, so could skip or set in UI
   base_dir <- base_dir #point to new location on remote
-  axn_dir <- file.path(base_dir, auction_id)
+  axn_dir <- file.path(data_dir, auction_id)
   
   # Name and path of the field shapefile specifying the bids to analyze
   # Defaults to being stored in axn_dir; change as needed
@@ -75,7 +76,7 @@ set_runner_definitions <- function(
   
   # Directory containing the GitHub repository with the code and data
   # Defaults to assuming 'bid-runner-local' cloned to base_dir; adjust as needed
-  repo_dir <- axn_dir
+  repo_dir <- repo_dir 
   
   
   vars <- 
@@ -93,7 +94,8 @@ set_runner_definitions <- function(
       cores_max_global = cores_max_global, 
       overwrite_global = overwrite_global, 
       temp_dir = temp_dir, 
-      repo_dir = axn_dir
+      repo_dir = repo_dir, 
+      data_dir = data_dir
     )
   
   list2env(vars, envir = .GlobalEnv)

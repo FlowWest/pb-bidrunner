@@ -27,6 +27,7 @@ print(paste("the value of the input bucket is:", args[3]))
 set_runner_definitions(
   auction_id = gsub("/", "", args[1]), # when run locally you provide the id here 
   base_dir = paste0("/mnt/efs"),
+  data_dir = paste0("/mnt/efs/bidrunner-data"),
   repo_dir = ".", # where the code is stored
   shapefile_name = gsub("/", "", args[2])
 )
