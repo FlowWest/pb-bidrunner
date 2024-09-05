@@ -12,13 +12,13 @@ if (!require("logger")) {
 
 # Get arguments from command line
 withCallingHandlers(args <- commandArgs(trailingOnly = TRUE),
-         error = \(e) stop(log_fatal("Error getting command line args:\n*", paste(e))$default$message),
-         warning = \(w) log_warn("Warning getting command line args:\n*", paste(w)),
+         error = \(e) stop(log_fatal("Error getting command line args:\n* ", paste(e))$default$message),
+         warning = \(w) log_warn("Warning getting command line args:\n* ", paste(w)),
          message = \(m) log_info(m$message))
 
 withCallingHandlers(source("global.R"),
-         error = \(e) stop(log_fatal("Error sourcing global.R:\n*", paste(e))$default$message),
-         warning = \(w) log_warn("Warning sourcing global.R:\n*", paste(w)),
+         error = \(e) stop(log_fatal("Error sourcing global.R:\n* ", paste(e))$default$message),
+         warning = \(w) log_warn("Warning sourcing global.R:\n* ", paste(w)),
          message = \(m) log_info(m$message))
 compute_engine <- get_computing_backend()
 
@@ -28,8 +28,8 @@ compute_engine <- get_computing_backend()
 log_trace("Loading definitions and checking parameters")
 def_dir <- if (compute_engine == "aws") "." else getwd()
 withCallingHandlers(source(file.path(def_dir, "definitions.R")),
-         error = \(e) stop(log_fatal("Error sourcing definitions.R:\n*", paste(e))$default$message),
-         warning = \(w) log_warn("Warning sourcing definitions.R:\n*", paste(w)),
+         error = \(e) stop(log_fatal("Error sourcing definitions.R:\n* ", paste(e))$default$message),
+         warning = \(w) log_warn("Warning sourcing definitions.R:\n* ", paste(w)),
          message = \(m) log_info(m$message))
 
 # determine whether we are running locally or on aws
@@ -40,14 +40,14 @@ if (length(args) == 0 && compute_engine == "aws") {
 # update to reflect model run
 withCallingHandlers({
   set_runner_definitions(
-    auction_id = args[1], # when run locally you provide the id here (e.g., "2024-02-B4B")
-    base_dir = paste0("/mnt/efs/", args[3]), #local example: "E:/data/auctions"
+    auction_id = "2024-02-B4B", #args[1], # when run locally you provide the id here (e.g., "2024-02-B4B",#  )
+    base_dir = "E:/data/auctions",#  paste0("/mnt/efs/", args[3]), #local example: "E:/data/auctions",#  
     repo_dir = ".", # where the code is stored
-    data_dir = "path/to/data", #"E:/data/auctions/auction_data",
+    data_dir = "E:/data/auctions/auction_data", #"path/to/data", #"E:/data/auctions/auction_data",#  
     shapefile_name = "B4B_spring_24_fields_all.shp", #args[2]
   )},
-  error = \(e) stop(log_fatal("Error setting definitions for run:\n*", paste(e))$default$message),
-  warning = \(w) log_warn("Warning setting definitions for run:\n*", paste(w)),
+  error = \(e) stop(log_fatal("Error setting definitions for run:\n* ", paste(e))$default$message),
+  warning = \(w) log_warn("Warning setting definitions for run:\n* ", paste(w)),
   message = \(m) log_info(m$message)
   )
 
@@ -56,8 +56,8 @@ setup_dir <- file.path(def_dir, "scripts") #change if needed
 
 # setup does not need remote args, therefore hardcoding it to false for now
 withCallingHandlers(source(file.path(setup_dir, "01_setup.R")),
-         error = \(e) stop(log_fatal("Error running setup.R:\n*", paste(e))$default$message),
-         warning = \(w) log_warn("Warning running setup.R:\n*", paste(w)),
+         error = \(e) stop(log_fatal("Error running setup.R:\n* ", paste(e))$default$message),
+         warning = \(w) log_warn("Warning running setup.R:\n* ", paste(w)),
          message = \(m) log_info(m$message))
 
 # Load packages (for multi-core processing and reporting)
@@ -75,8 +75,8 @@ withCallingHandlers({
                                          output_dir = spl_dir,              #defined in definitions.R
                                          do_rasterize = FALSE,
                                          overwrite = overwrite_global)},
-  error = \(e) stop(log_fatal("Error splitting shapefile:\n*", paste(e))$default$message),
-  warning = \(w) log_warn("Warning splitting shapefile:\n*", paste(w)),
+  error = \(e) stop(log_fatal("Error splitting shapefile:\n* ", paste(e))$default$message),
+  warning = \(w) log_warn("Warning splitting shapefile:\n* ", paste(w)),
   message = \(m) log_info(m$message))
 
 # Function that runs the auction, using progress handlers and multiple cores as 
@@ -118,9 +118,11 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
   log_debug("Starting progress reporter")
   
   if (is.null(p)) {
-    p <- progressor(steps = n_rst + n_imp + n_wxl + n_fcl + n_prd + n_att, 
-                    auto_finish = FALSE)
+    #p <- progressor(steps = n_rst + n_imp + n_wxl + n_fcl + n_prd + n_att, 
+    #                auto_finish = FALSE)
   }
+  
+  log_debug("Progress reporter started")    #no messages show up after progressor established
   
   # Set reporting level
   if (verbose_level > 1) {
@@ -132,11 +134,11 @@ evaluate_auction <- function(flood_areas, overwrite = FALSE,
   } else {
     prg_msg <- TRUE
     fxn_msg <- FALSE
-  } 
+  }
   
   foreach(fa = flood_areas) %dofuture% {
     
-    log_debug("Splitting by core")
+    log_debug("Splitting by core") #no messages show up in logger after split processing established even if progressor isn't established
     
     # Set terra memory options
     terraOptions(memfrac = 0.1, memmax = 8)#, steps = 55)
