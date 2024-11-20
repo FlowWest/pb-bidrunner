@@ -37,6 +37,8 @@ echo "auction id: $auction_id"
 echo "auction shapefile: $auction_shapefile"
 echo "output bucket: $output_bucket"
 
+Rscript -e 'install.packages("R.utils", repos="https://cloud.r-project.org")'
+
 send_sqs_message "$QUEUE_URL" "<execute.sh> - Starting up bid run" "$bid_name"
 send_sqs_message "$QUEUE_URL" "<execute.sh> - Strating 02_analyze_bids.R" "$bid_name"
 Rscript --no-save scripts/02_analyze_bids.R $auction_id $auction_shapefile $auction_id
