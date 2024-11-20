@@ -2,19 +2,8 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 
-source("global.R")
-compute_engine <- get_computing_backend()
-
-def_dir <- if (compute_engine == "aws") "." else getwd()
-
-source(file.path(def_dir, "definitions.R"))
-
 # determine whether we are running locally or on aws
 
-if (length(args) == 0 && compute_engine == "aws") {
-  logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")
-  stop(call. = FALSE)  
-}
 # Setup logging package --------------------------------------------------------
 # Check logging package first with non-logger error message if not found
 if (!require("logger")) {
@@ -35,7 +24,14 @@ withCallingHandlers(source("global.R"),
          error = \(e) stop(log_fatal("Error sourcing global.R:\n* ", paste(e))$default$message),
          warning = \(w) log_warn("Warning sourcing global.R:\n* ", paste(w)),
          message = \(m) log_info(m$message))
+
 compute_engine <- get_computing_backend()
+
+if (length(args) == 0 && compute_engine == "aws") {
+  logger::log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")
+  stop(call. = FALSE)  
+}
+
 
 # Load definitions -------------------------------------------------------------
 # Load definitions.R to set auction and processing parameters
@@ -46,11 +42,6 @@ withCallingHandlers(source(file.path(def_dir, "definitions.R")),
          error = \(e) stop(log_fatal("Error sourcing definitions.R:\n* ", paste(e))$default$message),
          warning = \(w) log_warn("Warning sourcing definitions.R:\n* ", paste(w)),
          message = \(m) log_info(m$message))
-
-# determine whether we are running locally or on aws
-if (length(args) == 0 && compute_engine == "aws") {
-  stop(log_fatal("bid running in REMOTE mode but no args passed in. Stopping.")$default$message)
-}
 
 print("the files in the /mnt/efs/bidunner-data")
 print(list.files("/mnt/efs/"))

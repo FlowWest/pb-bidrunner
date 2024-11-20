@@ -19,7 +19,6 @@ set_runner_definitions <- function(
     repo_dir,
     data_dir,                          # add option to specify data_dir in call?
     shapefile_name, 
-    data_dir,
     extra_cols = c(), 
     bids_to_remove = c(), 
     axn_extent = "valley", 
