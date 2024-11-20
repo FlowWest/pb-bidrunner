@@ -17,6 +17,7 @@ set_runner_definitions <- function(
     auction_id, 
     base_dir, 
     repo_dir,
+    data_dir,                          # add option to specify data_dir in call?
     shapefile_name, 
     data_dir,
     extra_cols = c(), 
@@ -24,6 +25,7 @@ set_runner_definitions <- function(
     axn_extent = "valley", 
     cores_max_global = 4, 
     overwrite_global = FALSE) {
+  
   # Auction ----------------------------------------------------------------------
   # Name of auction and auction shapefile
   # Used as a folder name, so letters, numbers, underscores, and dashes only
@@ -78,11 +80,15 @@ set_runner_definitions <- function(
   # Defaults to assuming 'bid-runner-local' cloned to base_dir; adjust as needed
   repo_dir <- repo_dir 
   
+  # Directory containing the required data
+  # This should change to be a stable location outside the repo and/or specified via command line
+  data_dir <- data_dir # TODO
   
   vars <- 
     list(
       auction_id = auction_id, 
       base_dir = base_dir, 
+      data_dir = data_dir, 
       axn_dir = axn_dir, 
       shp_fn = shp_fn, 
       axn_file = axn_file, 

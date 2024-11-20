@@ -1,4 +1,4 @@
-# bid-runner-local
+# pointblue-bid-runner
 Analyze bids that flood wetlands or agricultural fields to provide habitat for migrating shorebirds in California's Central Valley 
 
 ## Overview
