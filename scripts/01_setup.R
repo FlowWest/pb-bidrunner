@@ -59,7 +59,7 @@ if (!file.exists(log_dir)) {
 }
 
 # log_appender(appender_tee(file.path(log_dir, "logger-log"), max_lines = 1000, max_files = 10L))
-log_appender(appender_sqs)
+log_appender(appender_sqs(Sys.getenv("BID_NAME"), Sys.getenv("Q_URL")))
 log_info("Processing has commenced. Logging output to file in log_dir {log_dir}")
 
 # Code files -------------------------------------------------------------------

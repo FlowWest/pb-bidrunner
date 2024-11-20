@@ -13,6 +13,9 @@ auction_id=$2
 auction_shapefile=$3
 output_bucket=$4
 
+export BID_NAME=$1
+export Q_URL=$QUEUE_URL
+
 send_sqs_message() {
     local queue_url="$1"
     local message="$2"
