@@ -50,11 +50,11 @@ print(list.files("/mnt/efs/"))
 
 withCallingHandlers({
   set_runner_definitions(
-    auction_id = "2024-02-B4B", #args[1], # when run locally you provide the id here (e.g., "2024-02-B4B",#  )
-    base_dir = "E:/data/auctions",#  paste0("/mnt/efs/", args[3]), #local example: "E:/data/auctions",#  
+    auction_id = args[1], #args[1], # when run locally you provide the id here (e.g., "2024-02-B4B",#  )
+    base_dir = paste0("/mnt/efs/", args[3]),#  paste0("/mnt/efs/", args[3]), #local example: "E:/data/auctions",#  
     repo_dir = ".", # where the code is stored
-    data_dir = "E:/data/auctions/auction_data", #"path/to/data", #"E:/data/auctions/auction_data",#  
-    shapefile_name = "B4B_spring_24_fields_all.shp", #args[2]
+    data_dir = "/mnt/efs/", #"path/to/data", #"E:/data/auctions/auction_data",#  
+    shapefile_name = args[2], #args[2]
   )},
   error = \(e) stop(log_fatal("Error setting definitions for run:\n* ", paste(e))$default$message),
   warning = \(w) log_warn("Warning setting definitions for run:\n* ", paste(w)),

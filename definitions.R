@@ -99,8 +99,7 @@ set_runner_definitions <- function(
       cores_max_global = cores_max_global, 
       overwrite_global = overwrite_global, 
       temp_dir = temp_dir, 
-      repo_dir = repo_dir, 
-      data_dir = data_dir
+      repo_dir = repo_dir
     )
   
   list2env(vars, envir = .GlobalEnv)
